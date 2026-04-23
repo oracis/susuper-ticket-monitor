@@ -410,23 +410,23 @@
     <div class="modal-icon">🎫</div>
     <h2 id="modalTitle">苏超门票有新动态！</h2>
     <p id="modalMsg">检测到预约窗口可能已开放，请立即前往苏服办查看！</p>
-    <button class="modal-btn" onclick="openSufu()">🚀 立即前往苏服办</button>
-    <button class="modal-btn modal-btn-sec" onclick="closeModal()">稍后再看</button>
+    <button class="modal-btn" id="modalBtn" onclick="openSufu()">🚀 立即前往苏服办</button>
+    <button class="modal-btn modal-btn-sec" id="modalDismiss" onclick="closeModal()" style="display:none">知道了</button>
   </div>
 </div>
 
-<!-- Header -->
-<div class="header">
-  <div class="header-logo">⚽</div>
-  <div class="header-info">
-    <h1>苏超门票开售监控</h1>
-    <p>2026年江苏省城市足球联赛 · 实时预约动态追踪</p>
-  </div>
-  <div class="header-badge">
-    <div class="dot-live" id="liveIndicator"></div>
-    <span id="monitorStatus">监控中</span>
-  </div>
-</div>
+    <!-- ===== Header ===== -->
+    <div class="header">
+      <div class="header-logo">⚽</div>
+      <div class="header-info">
+        <h1>苏超门票开售监控</h1>
+        <p>2026年江苏省城市足球联赛 · 实时预约动态追踪</p>
+      </div>
+      <div class="header-badge">
+        <div class="dot-live" id="liveIndicator"></div>
+        <span id="monitorStatus">监控中</span>
+      </div>
+    </div>
 
 <div class="container">
 
@@ -526,7 +526,7 @@
       <div class="guide-step">
         <div class="step-num">1</div>
         <div class="step-content">
-          打开 <strong>苏服办APP</strong> 或微信/支付宝搜索「苏服办」小程序，进入「苏超预约购票」模块
+          打开 <strong>苏服办APP / 微信小程序 / 支付宝小程序</strong>，搜索「苏服办」进入，点击「省足球联赛预约购票」
         </div>
       </div>
       <div class="guide-step">
@@ -742,9 +742,23 @@ function closeModal() {
 }
 
 function openSufu() {
-  window.open("https://sufu.jiangsu.gov.cn", "_blank");
-  closeModal();
-  addLog("已跳转至苏服办官网", "ok");
+  // 苏服办没有网页端，只能通过APP和小程序访问
+  // 显示引导提示
+  document.getElementById("modalTitle").textContent = "如何打开苏服办？";
+  document.getElementById("modalMsg").innerHTML =
+    "苏服办没有网页版，请用以下方式之一打开：\n\n" +
+    "<strong>方式一：微信小程序</strong><br>" +
+    "微信 → 搜索「苏服办」→ 进入小程序<br>" +
+    "→ 点击「省足球联赛预约购票」\n\n" +
+    "<strong>方式二：支付宝小程序</strong><br>" +
+    "支付宝 → 搜索「苏服办」→ 进入小程序<br>" +
+    "→ 点击「省足球联赛预约购票」\n\n" +
+    "<strong>方式三：苏服办APP</strong><br>" +
+    "在手机应用商店搜索「苏服办」下载安装<br>" +
+    "→ 首页找到「省足球联赛预约购票」入口";
+  document.getElementById("modalBtn").style.display = "none";
+  document.getElementById("modalDismiss").style.display = "block";
+  addLog("苏服办为APP/小程序，无网页版，引导用户通过小程序访问", "info");
 }
 
 // ===== 声音 =====
