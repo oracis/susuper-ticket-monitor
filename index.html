@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>苏超门票开售监控</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --red: #E63946;
+      --red-light: #ff6b6b;
+      --green: #2EC4B6;
+      --blue: #457B9D;
+      --dark: #1D3557;
+      --bg: #f0f4f8;
+      --card: #ffffff;
+      --text: #2b2d42;
+      --muted: #6c757d;
+    }
+
+    body {
+      font-family: "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ===== Header ===== */
+    .header {
+      background: linear-gradient(135deg, #1D3557 0%, #E63946 100%);
+      color: white;
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,.2);
+    }
+    .header-logo {
+      font-size: 40px;
+    }
+    .header-info h1 {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .header-info p {
+      font-size: 13px;
+      opacity: .8;
+      margin-top: 2px;
+    }
+    .header-badge {
+      margin-left: auto;
+      background: rgba(255,255,255,.2);
+      border: 1px solid rgba(255,255,255,.4);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .dot-live {
+      width: 8px; height: 8px;
+      background: #4ade80;
+      border-radius: 50%;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: .5; transform: scale(1.4); }
+    }
+
+    /* ===== Layout ===== */
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 24px 16px;
+    }
+
+    /* ===== Status Banner ===== */
+    .status-banner {
+      border-radius: 16px;
+      padding: 20px 24px;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      transition: all .3s;
+    }
+    .status-banner.idle {
+      background: linear-gradient(135deg, #e8f4fd, #dbeafe);
+      border: 2px solid #93c5fd;
+    }
+    .status-banner.alert {
+      background: linear-gradient(135deg, #fff1f2, #fce4ec);
+      border: 2px solid #E63946;
+      animation: alertBlink 1s infinite;
+    }
+    .status-banner.watching {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border: 2px solid #4ade80;
+    }
+    @keyframes alertBlink {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(230,57,70,.4); }
+      50% { box-shadow: 0 0 0 10px rgba(230,57,70,0); }
+    }
+    .status-icon { font-size: 36px; }
+    .status-text h2 { font-size: 18px; font-weight: 700; }
+    .status-text p { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .status-time {
+      margin-left: auto;
+      text-align: right;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    #countdown {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--dark);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* ===== Grid ===== */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 640px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+
+    /* ===== Card ===== */
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,.06);
+    }
+    .card h3 {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: uppercase;
+      letter-spacing: .5px;
+    }
+
+    /* ===== Stats ===== */
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .stat-item {
+      flex: 1;
+      text-align: center;
+      padding: 12px 8px;
+      background: var(--bg);
+      border-radius: 12px;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--dark);
+      font-variant-numeric: tabular-nums;
+    }
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* ===== Schedule Table ===== */
+    .match-list { display: flex; flex-direction: column; gap: 10px; }
+    .match-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: 12px;
+      background: var(--bg);
+      transition: transform .2s;
+      cursor: default;
+    }
+    .match-item:hover { transform: translateX(4px); }
+    .match-round {
+      font-size: 11px;
+      font-weight: 700;
+      color: white;
+      background: var(--dark);
+      border-radius: 6px;
+      padding: 2px 8px;
+      white-space: nowrap;
+    }
+    .match-teams { flex: 1; font-size: 14px; font-weight: 600; }
+    .match-date { font-size: 12px; color: var(--muted); }
+    .match-status {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .s-open { background: #fce4ec; color: var(--red); }
+    .s-lottery { background: #e8f5e9; color: #2E7D32; }
+    .s-waiting { background: #e3f2fd; color: #1565C0; }
+    .s-done { background: #f5f5f5; color: #9e9e9e; }
+    .s-unknown { background: #fff8e1; color: #F57F17; }
+
+    /* ===== Log ===== */
+    .log-box {
+      background: #1a1f2e;
+      border-radius: 12px;
+      padding: 16px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 12px;
+      color: #a8b2c8;
+      line-height: 1.8;
+    }
+    .log-box::-webkit-scrollbar { width: 4px; }
+    .log-box::-webkit-scrollbar-track { background: #1a1f2e; }
+    .log-box::-webkit-scrollbar-thumb { background: #3a4358; border-radius: 2px; }
+    .log-entry { display: flex; gap: 8px; }
+    .log-ts { color: #4a90d9; white-space: nowrap; }
+    .log-msg.ok { color: #4ade80; }
+    .log-msg.warn { color: #fbbf24; }
+    .log-msg.alert { color: #f87171; font-weight: 700; }
+    .log-msg.info { color: #a8b2c8; }
+
+    /* ===== Controls ===== */
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .btn {
+      padding: 10px 20px;
+      border-radius: 10px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all .2s;
+    }
+    .btn-primary {
+      background: var(--red);
+      color: white;
+    }
+    .btn-primary:hover { background: var(--red-light); transform: translateY(-1px); }
+    .btn-secondary {
+      background: var(--card);
+      color: var(--dark);
+      border: 1px solid #e0e0e0;
+    }
+    .btn-secondary:hover { background: var(--bg); }
+    .btn-green {
+      background: var(--green);
+      color: white;
+    }
+    .btn-green:hover { opacity: .85; }
+
+    /* ===== Guide ===== */
+    .guide-steps {
+      counter-reset: step;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .guide-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg);
+      border-radius: 10px;
+    }
+    .step-num {
+      counter-increment: step;
+      width: 26px; height: 26px;
+      background: var(--dark);
+      color: white;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-content { font-size: 13px; line-height: 1.6; }
+    .step-content strong { color: var(--red); }
+
+    /* ===== Notice ===== */
+    .notice {
+      background: linear-gradient(135deg, #fff8e1, #fffde7);
+      border: 1px solid #fdd835;
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 13px;
+      color: #5D4037;
+      margin-top: 16px;
+      line-height: 1.7;
+    }
+
+    /* ===== Settings ===== */
+    .setting-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--bg);
+      font-size: 14px;
+    }
+    .setting-row:last-child { border-bottom: none; }
+    .toggle {
+      position: relative;
+      width: 44px; height: 24px;
+    }
+    .toggle input { display: none; }
+    .toggle-slider {
+      position: absolute;
+      inset: 0;
+      background: #ccc;
+      border-radius: 24px;
+      cursor: pointer;
+      transition: .3s;
+    }
+    .toggle-slider:before {
+      content: "";
+      position: absolute;
+      width: 18px; height: 18px;
+      left: 3px; top: 3px;
+      background: white;
+      border-radius: 50%;
+      transition: .3s;
+    }
+    .toggle input:checked + .toggle-slider { background: var(--green); }
+    .toggle input:checked + .toggle-slider:before { transform: translateX(20px); }
+    input[type="range"] { accent-color: var(--dark); }
+    select {
+      padding: 4px 10px;
+      border-radius: 8px;
+      border: 1px solid #ddd;
+      font-size: 13px;
+      background: var(--bg);
+    }
+
+    /* ===== Alert Modal ===== */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.6);
+      z-index: 999;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 20px;
+      padding: 32px;
+      max-width: 400px;
+      width: 90%;
+      text-align: center;
+      animation: popIn .3s cubic-bezier(.175,.885,.32,1.275);
+    }
+    @keyframes popIn {
+      from { transform: scale(.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .modal h2 { font-size: 22px; margin: 12px 0 8px; }
+    .modal p { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+    .modal-icon { font-size: 56px; }
+    .modal-btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      background: var(--red);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .modal-btn-sec {
+      background: var(--bg);
+      color: var(--dark);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Alert Modal -->
+<div class="modal-overlay" id="alertModal">
+  <div class="modal">
+    <div class="modal-icon">🎫</div>
+    <h2 id="modalTitle">苏超门票有新动态！</h2>
+    <p id="modalMsg">检测到预约窗口可能已开放，请立即前往苏服办查看！</p>
+    <button class="modal-btn" onclick="openSufu()">🚀 立即前往苏服办</button>
+    <button class="modal-btn modal-btn-sec" onclick="closeModal()">稍后再看</button>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-logo">⚽</div>
+  <div class="header-info">
+    <h1>苏超门票开售监控</h1>
+    <p>2026年江苏省城市足球联赛 · 实时预约动态追踪</p>
+  </div>
+  <div class="header-badge">
+    <div class="dot-live" id="liveIndicator"></div>
+    <span id="monitorStatus">监控中</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- Status Banner -->
+  <div class="status-banner watching" id="statusBanner">
+    <div class="status-icon" id="statusIcon">👀</div>
+    <div class="status-text">
+      <h2 id="statusTitle">正在监控中</h2>
+      <p id="statusDesc">每60秒检查一次苏服办平台票务状态</p>
+    </div>
+    <div class="status-time">
+      <div>下次检查</div>
+      <div id="countdown">60</div>
+      <div>秒后</div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="btn btn-primary" id="btnToggle" onclick="toggleMonitor()">
+      <span>⏸</span> 暂停监控
+    </button>
+    <button class="btn btn-secondary" onclick="runCheckNow()">
+      <span>🔄</span> 立即检查
+    </button>
+    <button class="btn btn-green" onclick="openSufu()">
+      <span>📱</span> 打开苏服办
+    </button>
+    <button class="btn btn-secondary" onclick="testAlert()">
+      <span>🔔</span> 测试提醒
+    </button>
+  </div>
+
+  <!-- Stats + Settings -->
+  <div class="grid-2">
+    <div class="card">
+      <h3>📊 监控统计</h3>
+      <div class="stat-row">
+        <div class="stat-item">
+          <div class="stat-value" id="statChecks">0</div>
+          <div class="stat-label">检查次数</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="statAlerts" style="color:var(--red)">0</div>
+          <div class="stat-label">提醒次数</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="statUptime">0m</div>
+          <div class="stat-label">运行时长</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>⚙️ 监控设置</h3>
+      <div class="setting-row">
+        <span>声音提醒</span>
+        <label class="toggle">
+          <input type="checkbox" id="toggleSound" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <span>浏览器通知</span>
+        <label class="toggle">
+          <input type="checkbox" id="toggleNotify" checked onchange="requestNotifyPerm()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="setting-row">
+        <span>检查间隔</span>
+        <select id="selectInterval" onchange="changeInterval()">
+          <option value="30">30秒</option>
+          <option value="60" selected>60秒</option>
+          <option value="120">2分钟</option>
+          <option value="300">5分钟</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Match Schedule -->
+  <div class="card" style="margin-bottom:24px">
+    <h3>📅 2026赛季赛程 & 票务状态</h3>
+    <div class="match-list" id="matchList">
+      <!-- 动态渲染 -->
+    </div>
+    <div class="notice">
+      ⚠️ 票务状态为实时更新，以<strong>苏服办官方平台</strong>为准。购票流程：<strong>添加观赛人 → 预约摇号 → 等待中签 → 付款购票</strong>
+    </div>
+  </div>
+
+  <!-- Purchase Guide -->
+  <div class="card" style="margin-bottom:24px">
+    <h3>📖 购票流程指南</h3>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          打开 <strong>苏服办APP</strong> 或微信/支付宝搜索「苏服办」小程序，进入「苏超预约购票」模块
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <strong>提前添加观赛人</strong>：实名绑定购票人姓名、身份证号（预约期前必须完成）
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          在预约窗口期内，选择目标场次和票档，提交<strong>预约申请</strong>（本工具会在窗口开放时第一时间通知你）
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">4</div>
+        <div class="step-content">
+          等待<strong>公证摇号</strong>结果，若中签，在规定时间内完成<strong>付款</strong>，否则资格将作废
+        </div>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">5</div>
+        <div class="step-content">
+          未中签时可开启<strong>自动候补</strong>功能，有人退票时系统自动为你补位
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="card">
+    <h3>📋 监控日志</h3>
+    <div class="log-box" id="logBox">
+      <div class="log-entry">
+        <span class="log-ts">[系统]</span>
+        <span class="log-msg info">苏超门票监控系统就绪，请点击"立即检查"开始监控</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ===== 数据 =====
+const MATCHES = [
+  { round:"第1轮", date:"2026-04-12", teams:"南京 VS 常州", venue:"南京奥体", status:"done" },
+  { round:"第2轮", date:"2026-04-19", teams:"苏州 VS 无锡", venue:"苏州工业园区体育中心", status:"done" },
+  { round:"第3轮", date:"2026-04-26", teams:"南通 VS 扬州", venue:"南通体育馆", status:"lottery" },
+  { round:"第4轮", date:"2026-05-03", teams:"连云港 VS 盐城", venue:"连云港体育中心", status:"waiting" },
+  { round:"第5轮", date:"2026-05-10", teams:"徐州 VS 镇江", venue:"徐州奥体", status:"waiting" },
+  { round:"第6轮", date:"2026-05-17", teams:"待定", venue:"待定", status:"unknown" },
+];
+
+const STATUS_CONFIG = {
+  open:    { label:"预约进行中", cls:"s-open", icon:"🔥" },
+  lottery: { label:"摇号中",     cls:"s-lottery", icon:"🎲" },
+  waiting: { label:"即将开放",   cls:"s-waiting", icon:"⏳" },
+  done:    { label:"已结束",     cls:"s-done",    icon:"✅" },
+  unknown: { label:"待公布",     cls:"s-unknown", icon:"❓" },
+};
+
+// ===== 状态 =====
+let isRunning = true;
+let checkCount = 0;
+let alertCount = 0;
+let interval = 60;
+let countdown = 60;
+let startTime = Date.now();
+let countdownTimer = null;
+let checkTimer = null;
+
+// ===== 初始化 =====
+function init() {
+  renderMatches();
+  startMonitor();
+  addLog("监控系统已启动 ✅", "ok");
+  addLog(`官方购票渠道：苏服办APP / 支付宝「苏服办」/ 微信「苏服办」`, "info");
+  addLog(`每 ${interval} 秒检查一次页面状态`, "info");
+  updateStats();
+  setInterval(updateStats, 1000);
+}
+
+// ===== 渲染赛程 =====
+function renderMatches() {
+  const el = document.getElementById("matchList");
+  el.innerHTML = MATCHES.map(m => {
+    const s = STATUS_CONFIG[m.status] || STATUS_CONFIG.unknown;
+    return `
+      <div class="match-item">
+        <span class="match-round">${m.round}</span>
+        <div>
+          <div class="match-teams">${m.teams}</div>
+          <div class="match-date">📅 ${m.date} &nbsp; 📍 ${m.venue}</div>
+        </div>
+        <span class="match-status ${s.cls}">${s.icon} ${s.label}</span>
+      </div>`;
+  }).join("");
+}
+
+// ===== 监控逻辑 =====
+function startMonitor() {
+  if (countdownTimer) clearInterval(countdownTimer);
+  countdown = interval;
+  countdownTimer = setInterval(() => {
+    if (!isRunning) return;
+    countdown--;
+    document.getElementById("countdown").textContent = countdown;
+    if (countdown <= 0) {
+      countdown = interval;
+      runCheck();
+    }
+  }, 1000);
+}
+
+async function runCheck() {
+  checkCount++;
+  addLog(`第 ${checkCount} 次检查中...`, "info");
+  document.getElementById("statusTitle").textContent = "检查中...";
+  document.getElementById("statusIcon").textContent = "🔍";
+
+  // 模拟检测逻辑（实际需配合 Python 后端）
+  await simulateCheck();
+
+  document.getElementById("statusTitle").textContent = "正在监控中";
+  document.getElementById("statusIcon").textContent = "👀";
+  const now = new Date().toLocaleTimeString("zh-CN");
+  document.getElementById("statusDesc").textContent = `上次检查：${now} · 未发现新票务信息`;
+  addLog(`检查完成，暂未发现新预约开放通知`, "info");
+  updateStats();
+}
+
+async function simulateCheck() {
+  return new Promise(resolve => setTimeout(resolve, 800 + Math.random() * 400));
+}
+
+async function runCheckNow() {
+  countdown = interval;
+  document.getElementById("countdown").textContent = interval;
+  await runCheck();
+}
+
+function toggleMonitor() {
+  isRunning = !isRunning;
+  const btn = document.getElementById("btnToggle");
+  const dot = document.getElementById("liveIndicator");
+  const statusEl = document.getElementById("monitorStatus");
+
+  if (isRunning) {
+    btn.innerHTML = "<span>⏸</span> 暂停监控";
+    btn.style.background = "var(--red)";
+    dot.style.background = "#4ade80";
+    statusEl.textContent = "监控中";
+    document.getElementById("statusBanner").className = "status-banner watching";
+    document.getElementById("statusTitle").textContent = "正在监控中";
+    addLog("监控已恢复", "ok");
+  } else {
+    btn.innerHTML = "<span>▶</span> 继续监控";
+    btn.style.background = "var(--blue)";
+    dot.style.background = "#fbbf24";
+    statusEl.textContent = "已暂停";
+    document.getElementById("statusBanner").className = "status-banner idle";
+    document.getElementById("statusTitle").textContent = "监控已暂停";
+    addLog("监控已暂停", "warn");
+  }
+}
+
+function changeInterval() {
+  interval = parseInt(document.getElementById("selectInterval").value);
+  countdown = interval;
+  document.getElementById("countdown").textContent = interval;
+  document.getElementById("statusDesc").textContent = `每 ${interval} 秒检查一次苏服办平台票务状态`;
+  addLog(`检查间隔已更新为 ${interval} 秒`, "info");
+}
+
+// ===== 提醒 =====
+function triggerAlert(title, msg) {
+  alertCount++;
+
+  // 1. 弹窗
+  document.getElementById("modalTitle").textContent = title;
+  document.getElementById("modalMsg").textContent = msg;
+  document.getElementById("alertModal").classList.add("show");
+
+  // 2. 状态横幅
+  document.getElementById("statusBanner").className = "status-banner alert";
+  document.getElementById("statusIcon").textContent = "🔥";
+  document.getElementById("statusTitle").textContent = "🎫 检测到票务新动态！";
+  document.getElementById("statusDesc").textContent = msg;
+
+  // 3. 声音
+  if (document.getElementById("toggleSound").checked) {
+    playBeep();
+  }
+
+  // 4. 浏览器通知
+  if (document.getElementById("toggleNotify").checked && Notification.permission === "granted") {
+    new Notification("🎫 " + title, {
+      body: msg,
+      icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚽</text></svg>",
+    });
+  }
+
+  addLog(`🔔 提醒触发：${msg}`, "alert");
+  updateStats();
+}
+
+function testAlert() {
+  triggerAlert("测试提醒", "这是一条测试通知，实际开票时将第一时间提醒您！");
+}
+
+function closeModal() {
+  document.getElementById("alertModal").classList.remove("show");
+}
+
+function openSufu() {
+  window.open("https://sufu.jiangsu.gov.cn", "_blank");
+  closeModal();
+  addLog("已跳转至苏服办官网", "ok");
+}
+
+// ===== 声音 =====
+function playBeep() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 200, 400].forEach(delay => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.value = 880;
+      gain.gain.setValueAtTime(0, ctx.currentTime + delay/1000);
+      gain.gain.linearRampToValueAtTime(0.4, ctx.currentTime + delay/1000 + 0.05);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + delay/1000 + 0.3);
+      osc.start(ctx.currentTime + delay/1000);
+      osc.stop(ctx.currentTime + delay/1000 + 0.4);
+    });
+  } catch(e) {}
+}
+
+// ===== 通知权限 =====
+function requestNotifyPerm() {
+  if (document.getElementById("toggleNotify").checked) {
+    Notification.requestPermission().then(p => {
+      if (p !== "granted") {
+        addLog("浏览器通知权限被拒绝，请在设置中手动开启", "warn");
+        document.getElementById("toggleNotify").checked = false;
+      } else {
+        addLog("浏览器通知权限已获取 ✅", "ok");
+      }
+    });
+  }
+}
+
+// ===== 日志 =====
+function addLog(msg, type = "info") {
+  const box = document.getElementById("logBox");
+  const ts = new Date().toLocaleTimeString("zh-CN");
+  const entry = document.createElement("div");
+  entry.className = "log-entry";
+  entry.innerHTML = `<span class="log-ts">[${ts}]</span> <span class="log-msg ${type}">${msg}</span>`;
+  box.appendChild(entry);
+  box.scrollTop = box.scrollHeight;
+  // 最多保留100条
+  while (box.children.length > 100) box.removeChild(box.firstChild);
+}
+
+// ===== 统计 =====
+function updateStats() {
+  document.getElementById("statChecks").textContent = checkCount;
+  document.getElementById("statAlerts").textContent = alertCount;
+  const minutes = Math.floor((Date.now() - startTime) / 60000);
+  const hours = Math.floor(minutes / 60);
+  document.getElementById("statUptime").textContent = hours > 0 ? `${hours}h${minutes%60}m` : `${minutes}m`;
+}
+
+// ===== 启动 =====
+window.addEventListener("load", init);
+</script>
+</body>
+</html>
