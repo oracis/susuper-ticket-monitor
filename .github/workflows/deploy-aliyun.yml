@@ -11,19 +11,24 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Install Python and oss2 SDK
-        run: |
-          pip install oss2
+        run: pip install oss2
 
       - name: Upload to OSS
-        run: python -c "
-import oss2
-import os
+        env:
+          OSS_ACCESS_KEY_ID: ${{ secrets.OSS_ACCESS_KEY_ID }}
+          OSS_ACCESS_KEY_SECRET: ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+          OSS_BUCKET: ${{ secrets.OSS_BUCKET }}
+        run: |
+          python << 'EOF'
+          import oss2
+          import os
 
-auth = oss2.Auth('${{ secrets.OSS_ACCESS_KEY_ID }}', '${{ secrets.OSS_ACCESS_KEY_SECRET }}')
-bucket = oss2.Bucket(auth, 'oss-cn-shanghai.aliyuncs.com', '${{ secrets.OSS_BUCKET }}')
+          auth = oss2.Auth(os.environ['OSS_ACCESS_KEY_ID'], os.environ['OSS_ACCESS_KEY_SECRET'])
+          bucket = oss2.Bucket(auth, 'oss-cn-shanghai.aliyuncs.com', os.environ['OSS_BUCKET'])
 
-for f in ['index.html']:
-    if os.path.exists(f):
-        bucket.put_object(f, open(f, 'rb'))
-        print(f'Uploaded: {f}')
-"
+          for f in ['index.html']:
+              if os.path.exists(f):
+                  with open(f, 'rb') as file:
+                      bucket.put_object(f, file)
+                  print(f'Uploaded: {f}')
+          EOF
