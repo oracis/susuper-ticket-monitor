@@ -22,13 +22,40 @@ jobs:
           python << 'EOF'
           import oss2
           import os
+          import mimetypes
 
           auth = oss2.Auth(os.environ['OSS_ACCESS_KEY_ID'], os.environ['OSS_ACCESS_KEY_SECRET'])
           bucket = oss2.Bucket(auth, 'oss-cn-shanghai.aliyuncs.com', os.environ['OSS_BUCKET'])
 
-          for f in ['index.html']:
-              if os.path.exists(f):
-                  with open(f, 'rb') as file:
-                      bucket.put_object(f, file)
-                  print(f'Uploaded: {f}')
+          # MIME type mapping
+          mime_types = {
+              '.html': 'text/html',
+              '.css': 'text/css',
+              '.js': 'application/javascript',
+              '.json': 'application/json',
+              '.png': 'image/png',
+              '.jpg': 'image/jpeg',
+              '.jpeg': 'image/jpeg',
+              '.gif': 'image/gif',
+              '.svg': 'image/svg+xml',
+              '.ico': 'image/x-icon',
+              '.woff': 'font/woff',
+              '.woff2': 'font/woff2',
+              '.ttf': 'font/ttf',
+              '.eot': 'application/vnd.ms-fontobject',
+          }
+
+          for root, dirs, files in os.walk('.'):
+              for f in files:
+                  filepath = os.path.join(root, f)
+                  # Skip .git and node_modules
+                  if '.git' in filepath or 'node_modules' in filepath:
+                      continue
+                  # Determine content type
+                  ext = os.path.splitext(f)[1].lower()
+                  content_type = mime_types.get(ext, 'application/octet-stream')
+                  # Upload with headers
+                  headers = {'Content-Type': content_type}
+                  bucket.put_object_from_file(filepath, filepath, headers=headers)
+                  print(f'Uploaded: {filepath} ({content_type})')
           EOF
