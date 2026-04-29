@@ -22,7 +22,6 @@ jobs:
           python << 'EOF'
           import oss2
           import os
-          import mimetypes
 
           auth = oss2.Auth(os.environ['OSS_ACCESS_KEY_ID'], os.environ['OSS_ACCESS_KEY_SECRET'])
           bucket = oss2.Bucket(auth, 'oss-cn-shanghai.aliyuncs.com', os.environ['OSS_BUCKET'])
@@ -51,11 +50,13 @@ jobs:
                   # Skip .git and node_modules
                   if '.git' in filepath or 'node_modules' in filepath:
                       continue
+                  # Clean path - remove leading ./
+                  oss_key = filepath.lstrip('./')
                   # Determine content type
                   ext = os.path.splitext(f)[1].lower()
                   content_type = mime_types.get(ext, 'application/octet-stream')
                   # Upload with headers
                   headers = {'Content-Type': content_type}
-                  bucket.put_object_from_file(filepath, filepath, headers=headers)
-                  print(f'Uploaded: {filepath} ({content_type})')
+                  bucket.put_object_from_file(oss_key, filepath, headers=headers)
+                  print(f'Uploaded: {oss_key} ({content_type})')
           EOF
