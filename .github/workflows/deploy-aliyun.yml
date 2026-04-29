@@ -10,17 +10,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.22'
-
-      - name: Install ossutil
+      - name: Download and install ossutil
         run: |
-          go install github.com/aliyun/ossutil/cmd/ossutil@latest
-          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+          wget -q https://github.com/aliyun/ossutil/releases/download/v1.7.19/ossutil-linux-amd64 -O ossutil
+          chmod +x ossutil
 
       - name: Configure and upload to OSS
         run: |
-          ossutil config --endpoint oss-cn-shanghai.aliyuncs.com --access-key-id ${{ secrets.OSS_ACCESS_KEY_ID }} --access-key-secret ${{ secrets.OSS_ACCESS_KEY_SECRET }}
-          ossutil cp index.html oss://${{ secrets.OSS_BUCKET }}/index.html --force
+          ./ossutil config --endpoint oss-cn-shanghai.aliyuncs.com --access-key-id ${{ secrets.OSS_ACCESS_KEY_ID }} --access-key-secret ${{ secrets.OSS_ACCESS_KEY_SECRET }}
+          ./ossutil cp index.html oss://${{ secrets.OSS_BUCKET }}/index.html --force
