@@ -24,7 +24,8 @@ jobs:
           import os
 
           auth = oss2.Auth(os.environ['OSS_ACCESS_KEY_ID'], os.environ['OSS_ACCESS_KEY_SECRET'])
-          bucket = oss2.Bucket(auth, 'oss-cn-shanghai.aliyuncs.com', os.environ['OSS_BUCKET'])
+          bucket = oss2.Bucket(auth, 'oss-cn-hongkong.aliyuncs.com', os.environ['OSS_BUCKET'])
+
 
           # MIME type mapping
           mime_types = {
